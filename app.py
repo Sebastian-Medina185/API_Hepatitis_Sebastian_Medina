@@ -77,6 +77,7 @@ def preparar_entrada(data):
 
 # Endpoint de predicción
 @app.route("/predict", methods=["POST"])
+@app.route("/predict", methods=["POST"])
 def predict():
     if modelo is None:
         return jsonify({"error": "Modelo no disponible"}), 500
@@ -95,18 +96,23 @@ def predict():
             except Exception as e:
                 print(f"[WARN] Error usando scaler: {e}")
 
-        pred = int(modelo.predict(X)[0])
         etiquetas = {0: "Vive", 1: "Muere", 2: "Muere"}
-        resultado = etiquetas.get(pred, f"Clase {pred}")
-
         probabilidades = None
+
         if hasattr(modelo, "predict_proba"):
             proba = modelo.predict_proba(X)[0]
-            probabilidades = {"Vive": float(proba[0]), "Muere": float(proba[1])}
+            probabilidades = {etiquetas[i]: float(p) for i, p in enumerate(proba)}
+            # Elegir resultado según mayor probabilidad
+            resultado = max(probabilidades, key=probabilidades.get)
+            valor_crudo = int(np.argmax(proba))
+        else:
+            pred = int(modelo.predict(X)[0])
+            resultado = etiquetas.get(pred, f"Clase {pred}")
+            valor_crudo = pred
 
         return jsonify({
             "resultado": resultado,
-            "valor_crudo": pred,
+            "valor_crudo": valor_crudo,
             "probabilidades": probabilidades
         })
 
@@ -116,6 +122,7 @@ def predict():
             "error": "Error durante la predicción",
             "detalle": str(e)
         }), 500
+
 
 # Ejecutar servidor
 if __name__ == "__main__":
